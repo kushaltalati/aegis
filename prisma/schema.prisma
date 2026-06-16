@@ -1,0 +1,161 @@
+// Aegis — AI Content Moderation Pipeline
+// SQLite via Prisma. Categories/actions stored as strings (validated in app layer)
+// since SQLite does not support native enums.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A platform/tenant. Each has exactly one policy configuration.
+model Platform {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String
+  audience    String // children | teen | general | adult
+  accentColor String   @default("#3B82F6")
+  createdAt   DateTime @default(now())
+
+  policy       PolicyConfig?
+  contentItems ContentItem[]
+  decisions    ModerationDecision[]
+}
+
+/// Per-platform moderation policy. Thresholds, category toggles, custom rules.
+model PolicyConfig {
+  id         String   @id @default(cuid())
+  platformId String   @unique
+  platform   Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  engine String @default("auto") // auto | gemini | local
+
+  // Global routing thresholds (0..1). Per-category overrides live in categoryConfig.
+  autoBlockThreshold Float @default(0.85)
+  reviewThreshold    Float @default(0.45)
+
+  // How strongly a low author trust score escalates routing (0 = ignore history).
+  historyWeight Float @default(0.15)
+
+  // JSON map: category -> { enabled, weight, blockThreshold?, reviewThreshold? }
+  categoryConfig String
+
+  // JSON array: [{ id, name, description, pattern, category, action, enabled }]
+  customRules String @default("[]")
+
+  updatedAt DateTime @updatedAt
+}
+
+/// A content author with reputation/history used for context-aware analysis.
+model AuthorProfile {
+  id              String   @id @default(cuid())
+  handle          String   @unique
+  displayName     String
+  trustScore      Float    @default(0.5) // 0 (untrusted) .. 1 (trusted)
+  priorViolations Int      @default(0)
+  accountAgeDays  Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  contentItems ContentItem[]
+}
+
+/// A single piece of content submitted for moderation.
+model ContentItem {
+  id         String   @id @default(cuid())
+  platformId String
+  platform   Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  authorId String?
+  author   AuthorProfile? @relation(fields: [authorId], references: [id])
+
+  threadId String?
+  text     String
+  context  String? // JSON: { thread: [{author, text}], note }
+  label    String? // ground-truth label for the labelled test set (category id or "benign")
+
+  createdAt DateTime @default(now())
+
+  decision ModerationDecision?
+}
+
+/// The pipeline's decision for one content item.
+model ModerationDecision {
+  id            String      @id @default(cuid())
+  contentItemId String      @unique
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+
+  platformId String
+  platform   Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  action            String // ALLOW | BLOCK | REVIEW
+  status            String @default("FINAL") // FINAL | PENDING_REVIEW | RESOLVED
+  engine            String // gemini | local
+  topCategory       String?
+  overallConfidence Float
+  severity          Float  @default(0)
+  reasoning         String
+  segments          String @default("[]") // JSON: [{ text, start, end, category, confidence }]
+  rawModel          String? // JSON raw engine output (audit)
+  latencyMs         Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  scores     CategoryScore[]
+  reviewItem ReviewQueueItem?
+  feedback   ReviewerFeedback?
+}
+
+/// Per-category score attached to a decision (post-policy).
+model CategoryScore {
+  id         String             @id @default(cuid())
+  decisionId String
+  decision   ModerationDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  category      String
+  confidence    Float
+  severity      Float
+  enabled       Boolean @default(true) // whether this category is active for the platform
+  triggeredRule String? // name of a custom rule that fired, if any
+}
+
+/// Human-review queue entry for ambiguous decisions.
+model ReviewQueueItem {
+  id         String             @id @default(cuid())
+  decisionId String             @unique
+  decision   ModerationDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  status     String  @default("PENDING") // PENDING | RESOLVED
+  priority   String  @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  assignedTo String?
+
+  createdAt DateTime @default(now())
+}
+
+/// A human moderator's final call — feedback that measures AI agreement.
+model ReviewerFeedback {
+  id         String             @id @default(cuid())
+  decisionId String             @unique
+  decision   ModerationDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  reviewer     String
+  finalAction  String // ALLOW | BLOCK
+  agreesWithAI Boolean
+  notes        String?
+
+  createdAt DateTime @default(now())
+}
+
+/// Append-only audit trail for every consequential action.
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String // decision | policy | review | platform
+  entityId   String
+  action     String
+  actor      String // system | ai:gemini | ai:local | reviewer:<name>
+  details    String   @default("{}") // JSON
+  createdAt  DateTime @default(now())
+}

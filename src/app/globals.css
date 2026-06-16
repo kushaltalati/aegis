@@ -1,0 +1,223 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/* Aegis design tokens — dark-mode operations dashboard.              */
+/* Blue primary, amber accent, green/amber/red status. Data-dense.   */
+/* ------------------------------------------------------------------ */
+
+@theme {
+  /* Surfaces */
+  --color-background: #080b12;
+  --color-surface: #0f1521;
+  --color-card: #131a28;
+  --color-elevated: #18212f;
+  --color-border: #232d3f;
+  --color-border-strong: #31405a;
+
+  /* Text */
+  --color-foreground: #e7eef8;
+  --color-muted: #93a1b5;
+  --color-faint: #5d6b80;
+
+  /* Brand */
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+  --color-primary-soft: #1d2c4d;
+  --color-accent: #f59e0b;
+  --color-accent-foreground: #1a1206;
+
+  /* Status */
+  --color-success: #22c55e;
+  --color-success-soft: #0f2a1c;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #2c2109;
+  --color-danger: #ef4444;
+  --color-danger-soft: #2c1414;
+  --color-info: #38bdf8;
+
+  /* Category accents (mirror src/lib/categories.ts) */
+  --color-cat-hate: #ef4444;
+  --color-cat-harassment: #f97316;
+  --color-cat-spam: #eab308;
+  --color-cat-misinfo: #a855f7;
+  --color-cat-violence: #dc2626;
+  --color-cat-adult: #ec4899;
+  --color-cat-selfharm: #06b6d4;
+
+  --color-ring: #3b82f6;
+
+  --radius-card: 14px;
+
+  --font-sans: var(--font-fira-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-mono: var(--font-fira-code), ui-monospace, "SFMono-Regular", Menlo,
+    monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Subtle ambient background grid for the ops feel */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      radial-gradient(
+        ellipse 80% 50% at 50% -10%,
+        rgba(59, 130, 246, 0.08),
+        transparent 60%
+      ),
+      linear-gradient(rgba(35, 45, 63, 0.25) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(35, 45, 63, 0.25) 1px, transparent 1px);
+    background-size:
+      100% 100%,
+      48px 48px,
+      48px 48px;
+  }
+
+  ::selection {
+    background: rgba(59, 130, 246, 0.35);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 9999px;
+    border: 2px solid var(--color-background);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3d4f6e;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: linear-gradient(
+      180deg,
+      rgba(24, 33, 47, 0.7),
+      rgba(15, 21, 33, 0.7)
+    );
+    backdrop-filter: blur(12px);
+  }
+
+  .card-base {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .aegis-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    background: #fff;
+    border: 2px solid var(--color-background);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+  }
+  .aegis-slider::-moz-range-thumb {
+    height: 14px;
+    width: 14px;
+    border-radius: 9999px;
+    background: #fff;
+    border: 2px solid var(--color-background);
+    cursor: pointer;
+  }
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-up {
+    animation: fade-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes pulse-ring {
+    0% {
+      box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+    }
+    70% {
+      box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    }
+  }
+  .animate-pulse-ring {
+    animation: pulse-ring 2s infinite;
+  }
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-elevated);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.05),
+      transparent
+    );
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
