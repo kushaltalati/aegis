@@ -305,27 +305,25 @@ export default function DashboardPage() {
               />
               <div className="mt-4 flex items-center gap-5">
                 <div className="relative h-[170px] w-[170px] shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={actionData}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={50}
-                        outerRadius={78}
-                        paddingAngle={2}
-                        stroke="none"
-                      >
-                        {actionData.map((d) => (
-                          <Cell key={d.name} fill={ACTION_COLORS[d.name]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={tooltipStyle}
-                        itemStyle={{ color: "#e7eef8" }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <PieChart width={170} height={170}>
+                    <Pie
+                      data={actionData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={50}
+                      outerRadius={78}
+                      paddingAngle={2}
+                      stroke="none"
+                    >
+                      {actionData.map((d) => (
+                        <Cell key={d.name} fill={ACTION_COLORS[d.name]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      itemStyle={{ color: "#e7eef8" }}
+                    />
+                  </PieChart>
                   <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-2xl font-semibold tabular">
                       {data.total}
