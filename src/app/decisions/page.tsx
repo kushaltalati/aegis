@@ -10,6 +10,7 @@ import {
   Bot,
   UserCheck,
   Settings2,
+  Download,
 } from "lucide-react";
 import {
   Card,
@@ -19,6 +20,7 @@ import {
   Spinner,
   EmptyState,
   Badge,
+  Button,
 } from "@/components/ui";
 import {
   DecisionDetail,
@@ -142,6 +144,7 @@ function DecisionsInner() {
             </option>
           ))}
         </Select>
+        <ExportButton platformId={platformId} action={action} category={category} q={q} />
       </Card>
 
       {/* List */}
@@ -196,6 +199,37 @@ function DecisionsInner() {
 
       {open && <DetailModal decision={open} onClose={() => setOpenId(null)} />}
     </div>
+  );
+}
+
+function ExportButton({
+  platformId,
+  action,
+  category,
+  q,
+}: {
+  platformId: string;
+  action: string;
+  category: string;
+  q: string;
+}) {
+  function download() {
+    const qs = new URLSearchParams();
+    if (platformId) qs.set("platformId", platformId);
+    if (action) qs.set("action", action);
+    if (category) qs.set("category", category);
+    if (q) qs.set("q", q);
+    const url = `/api/decisions/export${qs.size ? `?${qs}` : ""}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "";
+    a.click();
+  }
+
+  return (
+    <Button variant="ghost" onClick={download} title="Download filtered decisions as CSV">
+      <Download className="h-4 w-4" /> Export CSV
+    </Button>
   );
 }
 

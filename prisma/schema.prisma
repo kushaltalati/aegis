@@ -159,3 +159,13 @@ model AuditLog {
   details    String   @default("{}") // JSON
   createdAt  DateTime @default(now())
 }
+
+/// User-created labelled samples (supplements the built-in static set).
+model CustomSample {
+  id        String   @id @default(cuid())
+  text      String
+  expected  String   // HarmCategory | "benign"
+  note      String   @default("")
+  context   String   @default("{}") // JSON: { thread?, suggestPlatform?, pairId? }
+  createdAt DateTime @default(now())
+}

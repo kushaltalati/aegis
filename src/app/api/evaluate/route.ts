@@ -3,10 +3,16 @@ import { ok, fail, readJson } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { parsePolicy, enabledCategories } from "@/lib/policy";
 import { runPipeline } from "@/lib/pipeline";
-import { SAMPLES } from "@/lib/samples";
+import { SAMPLES, type Sample } from "@/lib/samples";
 import type { ClassificationInput } from "@/lib/types";
 
 const Body = z.object({ platformId: z.string().min(1) });
+
+function customToSample(row: { id: string; text: string; expected: string; note: string; context: string }): Sample {
+  let ctx: { thread?: { author: string; text: string }[]; suggestPlatform?: string; pairId?: string } = {};
+  try { ctx = JSON.parse(row.context); } catch {}
+  return { id: row.id, text: row.text, expected: row.expected as Sample["expected"], note: row.note, ...ctx };
+}
 
 // Batch-evaluate the labelled test set against a platform's policy (dry run,
 // nothing persisted). Proves classification accuracy + context handling.
@@ -23,8 +29,11 @@ export async function POST(req: Request) {
   const policy = parsePolicy(platform.policy);
   const enabled = enabledCategories(policy);
 
+  const customs = await prisma.customSample.findMany({ orderBy: { createdAt: "asc" } });
+  const allSamples = [...SAMPLES, ...customs.map(customToSample)];
+
   const results = [];
-  for (const sample of SAMPLES) {
+  for (const sample of allSamples) {
     const input: ClassificationInput = {
       text: sample.text,
       platform: {
