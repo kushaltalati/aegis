@@ -260,7 +260,9 @@ async function main() {
   for (let i = 0; i < seededDecisions.length; i++) {
     const dayOffset = i % 7; // even spread across the last 7 days
     const ts = new Date(Date.now() - dayOffset * DAY_MS);
-    ts.setHours(8 + ((i * 3) % 12), (i * 17) % 60, 0, 0); // 08:00–19:xx
+    // Use UTC hours to stay aligned with the analytics UTC bucketing, so seeded
+    // rows can't drift into adjacent buckets on non-UTC machines.
+    ts.setUTCHours(8 + ((i * 3) % 12), (i * 17) % 60, 0, 0); // 08:00–19:xx UTC
     await prisma.moderationDecision.update({
       where: { id: seededDecisions[i].id },
       data: { createdAt: ts },

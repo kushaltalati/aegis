@@ -87,10 +87,17 @@ type TimeSeriesPoint = {
   BLOCK: number;
 };
 
+/** How far back the dashboard trend chart looks. Caps the time-series scan. */
+const SERIES_WINDOW_DAYS = 30;
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const platformId = url.searchParams.get("platformId") || undefined;
   const where = platformId ? { platformId } : {};
+
+  // Only scan the recent window for the trend chart so /api/analytics stays
+  // cheap as the decision table grows — the chart shows the last N days anyway.
+  const seriesSince = new Date(Date.now() - SERIES_WINDOW_DAYS * DAY_MS);
 
   const [
     total,
@@ -142,7 +149,7 @@ export async function GET(req: Request) {
       include: { contentItem: true, platform: true },
     }),
     prisma.moderationDecision.findMany({
-      where,
+      where: { ...where, createdAt: { gte: seriesSince } },
       select: { createdAt: true, action: true },
       orderBy: { createdAt: "asc" },
     }),
