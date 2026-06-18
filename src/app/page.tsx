@@ -9,6 +9,9 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  AreaChart,
+  Area,
+  CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
@@ -22,6 +25,7 @@ import {
   ThumbsUp,
   LayoutDashboard,
   ArrowUpRight,
+  TrendingUp,
 } from "lucide-react";
 import {
   Card,
@@ -94,6 +98,12 @@ export default function DashboardPage() {
   const engineTotal = data
     ? Object.values(data.engineCounts).reduce((a, b) => a + b, 0)
     : 0;
+
+  const trendPoints = data?.timeSeries.points ?? [];
+  const trendUnit = data?.timeSeries.bucket ?? "day";
+  const hasTrend = trendPoints.some(
+    (p) => p.ALLOW + p.REVIEW + p.BLOCK > 0,
+  );
 
   return (
     <div className="space-y-6">
@@ -204,6 +214,88 @@ export default function DashboardPage() {
               />
             </div>
           </div>
+
+          <Card className="animate-fade-up p-5">
+            <SectionTitle
+              title="Decisions over time"
+              subtitle={`Routing outcomes per ${trendUnit}`}
+            />
+            <div className="mt-4">
+              {!hasTrend ? (
+                <EmptyState
+                  icon={<TrendingUp />}
+                  title="Not enough history yet"
+                  description="Decisions will chart here as content flows through the pipeline."
+                />
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart
+                    data={trendPoints}
+                    margin={{ top: 4, right: 8, left: -16, bottom: 0 }}
+                  >
+                    <defs>
+                      {(["ALLOW", "REVIEW", "BLOCK"] as const).map((a) => (
+                        <linearGradient
+                          key={a}
+                          id={`grad-${a}`}
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor={ACTION_COLORS[a]}
+                            stopOpacity={0.35}
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor={ACTION_COLORS[a]}
+                            stopOpacity={0.02}
+                          />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#232d3f"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fill: "#93a1b5", fontSize: 11 }}
+                      axisLine={{ stroke: "#232d3f" }}
+                      tickLine={false}
+                      minTickGap={16}
+                    />
+                    <YAxis
+                      tick={{ fill: "#93a1b5", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                      width={32}
+                    />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      itemStyle={{ color: "#e7eef8" }}
+                      labelStyle={{ color: "#93a1b5" }}
+                    />
+                    {(["BLOCK", "REVIEW", "ALLOW"] as const).map((a) => (
+                      <Area
+                        key={a}
+                        type="monotone"
+                        dataKey={a}
+                        stackId="outcomes"
+                        stroke={ACTION_COLORS[a]}
+                        strokeWidth={2}
+                        fill={`url(#grad-${a})`}
+                      />
+                    ))}
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </Card>
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="animate-fade-up p-5">

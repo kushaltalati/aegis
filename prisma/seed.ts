@@ -246,6 +246,33 @@ async function main() {
     });
   }
 
+  console.log("Spreading decision timestamps across the last ~7 days…");
+  // moderateContent stamps every decision with now(), which would collapse the
+  // "Decisions over time" chart onto a single bucket. Deterministically fan the
+  // rows out across the last week (with varied business-ish hours) so the demo
+  // shows a real day-by-day trend. We move both the decision and its content
+  // item so timestamps stay consistent across views.
+  const DAY_MS = 86_400_000;
+  const seededDecisions = await prisma.moderationDecision.findMany({
+    orderBy: { createdAt: "asc" },
+    select: { id: true, contentItemId: true },
+  });
+  for (let i = 0; i < seededDecisions.length; i++) {
+    const dayOffset = i % 7; // even spread across the last 7 days
+    const ts = new Date(Date.now() - dayOffset * DAY_MS);
+    // Use UTC hours to stay aligned with the analytics UTC bucketing, so seeded
+    // rows can't drift into adjacent buckets on non-UTC machines.
+    ts.setUTCHours(8 + ((i * 3) % 12), (i * 17) % 60, 0, 0); // 08:00–19:xx UTC
+    await prisma.moderationDecision.update({
+      where: { id: seededDecisions[i].id },
+      data: { createdAt: ts },
+    });
+    await prisma.contentItem.update({
+      where: { id: seededDecisions[i].contentItemId },
+      data: { createdAt: ts },
+    });
+  }
+
   console.log("Seeding a few resolved reviews (reviewer feedback)…");
   const reviewItems = await prisma.reviewQueueItem.findMany({
     where: { status: "PENDING" },

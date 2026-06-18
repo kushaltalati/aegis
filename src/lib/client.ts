@@ -59,6 +59,16 @@ export type QueueEntry = {
 export type Analytics = {
   total: number;
   actionCounts: Record<string, number>;
+  timeSeries: {
+    bucket: "day" | "hour";
+    points: {
+      t: string;
+      label: string;
+      ALLOW: number;
+      REVIEW: number;
+      BLOCK: number;
+    }[];
+  };
   engineCounts: Record<string, number>;
   categoryCounts: Record<string, number>;
   pendingQueue: number;
