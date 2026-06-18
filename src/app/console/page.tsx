@@ -11,6 +11,8 @@ import {
   Check,
   X,
   GitCompareArrows,
+  Upload,
+  UserPlus,
 } from "lucide-react";
 import {
   Card,
@@ -36,6 +38,7 @@ import {
   type SerializedDecision,
   type EvalResult,
 } from "@/lib/client";
+import { HARM_CATEGORIES } from "@/lib/categories";
 import { pct, cn } from "@/lib/utils";
 
 type Sample = {
@@ -46,6 +49,7 @@ type Sample = {
   thread?: { author: string; text: string }[];
   suggestPlatform?: string;
   pairId?: string;
+  source?: "builtin" | "custom";
 };
 
 type Tab = "classify" | "evaluate";
@@ -274,34 +278,12 @@ export default function ConsolePage() {
             </Card>
 
             {/* Sample library */}
-            <Card className="p-5">
-              <SectionTitle
-                title="Labelled samples"
-                subtitle="Click to load. Pairs show context sensitivity."
-                icon={<Sparkles />}
-              />
-              <div className="mt-3 flex flex-wrap gap-2">
-                {samples.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => loadSample(s)}
-                    title={s.note}
-                    className="group flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-xs transition-colors hover:border-primary"
-                  >
-                    {s.pairId && (
-                      <GitCompareArrows className="h-3.5 w-3.5 text-accent" />
-                    )}
-                    <span className="text-muted group-hover:text-foreground">
-                      {s.expected === "benign" ? (
-                        "benign"
-                      ) : (
-                        <>{categoryLabel(s.expected)}</>
-                      )}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </Card>
+            <SampleLibrary
+              samples={samples}
+              platforms={platforms}
+              onLoad={loadSample}
+              onSamplesChange={setSamples}
+            />
           </div>
 
           {/* Result */}
@@ -369,6 +351,194 @@ function Field({
       </label>
       {children}
     </div>
+  );
+}
+
+function SampleLibrary({
+  samples,
+  platforms,
+  onLoad,
+  onSamplesChange,
+}: {
+  samples: Sample[];
+  platforms: PlatformSummary[];
+  onLoad: (s: Sample) => void;
+  onSamplesChange: React.Dispatch<React.SetStateAction<Sample[]>>;
+}) {
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const [showForm, setShowForm] = React.useState(false);
+  const [addText, setAddText] = React.useState("");
+  const [addExpected, setAddExpected] = React.useState("benign");
+  const [addNote, setAddNote] = React.useState("");
+  const [addPlatform, setAddPlatform] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const [importMsg, setImportMsg] = React.useState<string | null>(null);
+
+  async function refreshSamples() {
+    const d = await api<{ samples: Sample[] }>("/api/samples");
+    onSamplesChange(d.samples);
+  }
+
+  async function saveSample() {
+    if (!addText.trim()) return;
+    setSaving(true);
+    try {
+      await api("/api/samples", {
+        method: "POST",
+        json: {
+          text: addText.trim(),
+          expected: addExpected,
+          note: addNote.trim(),
+          suggestPlatform: addPlatform || undefined,
+        },
+      });
+      await refreshSamples();
+      setAddText(""); setAddNote(""); setAddPlatform(""); setShowForm(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteSample(id: string) {
+    await api(`/api/samples/${id}`, { method: "DELETE" });
+    onSamplesChange((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const isCsv = file.name.endsWith(".csv");
+    setImportMsg(null);
+    try {
+      const res = await fetch("/api/samples/import", {
+        method: "POST",
+        headers: { "Content-Type": isCsv ? "text/csv" : "application/json" },
+        body: text,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Import failed");
+      setImportMsg(`Imported ${data.inserted} sample${data.inserted !== 1 ? "s" : ""}${data.errors?.length ? ` (${data.errors.length} skipped)` : ""}`);
+      await refreshSamples();
+    } catch (err) {
+      setImportMsg(err instanceof Error ? err.message : "Import failed");
+    }
+    e.target.value = "";
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <SectionTitle
+          title="Labelled samples"
+          subtitle="Click to load. Pairs show context sensitivity."
+          icon={<Sparkles />}
+        />
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            title="Import JSON or CSV file"
+            className="flex items-center gap-1 rounded-md border border-border bg-elevated px-2 py-1 text-xs text-muted transition-colors hover:border-primary hover:text-foreground"
+          >
+            <Upload className="h-3.5 w-3.5" /> Import
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowForm((v) => !v)}
+            className="flex items-center gap-1 rounded-md border border-border bg-elevated px-2 py-1 text-xs text-muted transition-colors hover:border-primary hover:text-foreground"
+          >
+            <UserPlus className="h-3.5 w-3.5" /> Add
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json,.csv"
+            className="hidden"
+            onChange={handleFile}
+          />
+        </div>
+      </div>
+
+      {importMsg && (
+        <p className="mb-2 text-xs text-success">{importMsg}</p>
+      )}
+
+      {showForm && (
+        <div className="mb-4 space-y-2 rounded-lg border border-border bg-elevated p-3">
+          <p className="text-xs font-medium text-faint uppercase tracking-wide">New sample</p>
+          <Textarea
+            rows={2}
+            value={addText}
+            onChange={(e) => setAddText(e.target.value)}
+            placeholder="Sample text to classify…"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="mb-1 block text-xs text-faint">Expected label</label>
+              <Select value={addExpected} onChange={(e) => setAddExpected(e.target.value)}>
+                <option value="benign">benign</option>
+                {HARM_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{categoryLabel(c)}</option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-faint">Platform hint (optional)</label>
+              <Select value={addPlatform} onChange={(e) => setAddPlatform(e.target.value)}>
+                <option value="">Any</option>
+                {platforms.map((p) => (
+                  <option key={p.id} value={p.slug}>{p.name}</option>
+                ))}
+              </Select>
+            </div>
+          </div>
+          <Input
+            value={addNote}
+            onChange={(e) => setAddNote(e.target.value)}
+            placeholder="Note (optional)"
+          />
+          <div className="flex gap-2">
+            <Button variant="primary" onClick={saveSample} disabled={saving || !addText.trim()}>
+              {saving ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              Save
+            </Button>
+            <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {samples.map((s) => (
+          <div key={s.id} className="group relative flex items-center gap-1.5 rounded-lg border border-border bg-elevated transition-colors hover:border-primary">
+            <button
+              onClick={() => onLoad(s)}
+              title={s.note}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+            >
+              {s.pairId && <GitCompareArrows className="h-3.5 w-3.5 text-accent" />}
+              {s.source === "custom" && <UserPlus className="h-3 w-3 text-primary/70" />}
+              <span className="text-muted group-hover:text-foreground">
+                {s.expected === "benign" ? "benign" : categoryLabel(s.expected)}
+              </span>
+            </button>
+            {s.source === "custom" && (
+              <button
+                type="button"
+                aria-label="Delete sample"
+                onClick={() => deleteSample(s.id)}
+                className="pr-1.5 text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        ))}
+        {samples.length === 0 && (
+          <p className="text-xs text-faint">No samples yet. Add one above or import a file.</p>
+        )}
+      </div>
+    </Card>
   );
 }
 
