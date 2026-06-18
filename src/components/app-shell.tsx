@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           if (!active) return;
           setPending(d.pendingQueue ?? 0);
           setEngine(
-            d.geminiAvailable ? "gemini" : d.groqAvailable ? "groq" : "local",
+            d.groqAvailable ? "groq" : d.geminiAvailable ? "gemini" : "local",
           );
         })
         .catch(() => {});

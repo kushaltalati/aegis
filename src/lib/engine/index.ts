@@ -1,7 +1,7 @@
 // Engine router. Resolves the engine choice from the global env override and the
 // platform's policy, then runs an AI-first fallback chain:
 //
-//     Gemini  →  Groq (or any OpenAI-compatible LLM)  →  local engine
+//     Groq (or any OpenAI-compatible LLM)  →  Gemini  →  local engine
 //
 // The local lexical engine is only the LAST resort, used when no AI engine is
 // configured or every AI engine fails — so a transient outage never silently
@@ -21,8 +21,9 @@ const gemini = new GeminiEngine();
 const groq = new GroqEngine();
 const local = new LocalEngine();
 
-/** AI engines in preference order. */
-const AI_CHAIN: ModerationEngine[] = [gemini, groq];
+/** AI engines in preference order. Groq first: it is fast (~1s) and reliable;
+ *  Gemini is kept as a secondary fallback (its free tier is slow / rate-limited). */
+const AI_CHAIN: ModerationEngine[] = [groq, gemini];
 
 export type EngineRun = {
   result: ClassificationResult;
