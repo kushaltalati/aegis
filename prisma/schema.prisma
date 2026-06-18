@@ -1,13 +1,13 @@
 // Aegis — AI Content Moderation Pipeline
-// SQLite via Prisma. Categories/actions stored as strings (validated in app layer)
-// since SQLite does not support native enums.
+// PostgreSQL via Prisma (Neon in production). Categories/actions are stored as
+// strings (validated in the app layer) for portability across DB providers.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
