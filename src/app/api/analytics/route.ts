@@ -1,7 +1,7 @@
 import { ok } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { HARM_CATEGORIES } from "@/lib/categories";
-import { geminiAvailable } from "@/lib/engine";
+import { geminiAvailable, groqAvailable } from "@/lib/engine";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -111,5 +111,6 @@ export async function GET(req: Request) {
       createdAt: r.createdAt.toISOString(),
     })),
     geminiAvailable: geminiAvailable(),
+    groqAvailable: groqAvailable(),
   });
 }

@@ -4,7 +4,7 @@ import type { HarmCategory } from "./categories";
 
 export type ModerationAction = "ALLOW" | "BLOCK" | "REVIEW";
 export type ReviewPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-export type EngineName = "gemini" | "local";
+export type EngineName = "gemini" | "groq" | "local";
 export type EngineChoice = "auto" | "gemini" | "local";
 
 /** A thread message used to give the engine conversational context. */

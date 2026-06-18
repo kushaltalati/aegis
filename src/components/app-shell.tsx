@@ -32,7 +32,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState<number | null>(null);
-  const [gemini, setGemini] = React.useState<boolean | null>(null);
+  const [engine, setEngine] = React.useState<
+    "gemini" | "groq" | "local" | null
+  >(null);
 
   React.useEffect(() => {
     setOpen(false);
@@ -47,7 +49,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         .then((d) => {
           if (!active) return;
           setPending(d.pendingQueue ?? 0);
-          setGemini(Boolean(d.geminiAvailable));
+          setEngine(
+            d.geminiAvailable ? "gemini" : d.groqAvailable ? "groq" : "local",
+          );
         })
         .catch(() => {});
     load();
@@ -115,11 +119,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           Active engine
         </div>
         <div className="flex items-center gap-2">
-          {gemini ? (
+          {engine === "gemini" || engine === "groq" ? (
             <>
               <Bot className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-foreground">
-                Gemini
+                {engine === "gemini" ? "Gemini" : "Groq"}
               </span>
               <span className="ml-auto flex items-center gap-1 text-[11px] text-success">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
@@ -136,9 +140,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </>
           )}
         </div>
-        {gemini === false && (
+        {engine === "local" && (
           <p className="mt-1.5 text-[11px] leading-snug text-faint">
-            Set GEMINI_API_KEY to enable context-aware AI classification.
+            Set GEMINI_API_KEY or FALLBACK_LLM_API_KEY to enable AI
+            classification.
           </p>
         )}
       </div>

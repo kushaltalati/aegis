@@ -133,15 +133,36 @@ export function PriorityBadge({ priority }: { priority: string }) {
   );
 }
 
+const ENGINE_META: Record<
+  string,
+  { label: string; color: string; title: string; ai: boolean }
+> = {
+  gemini: {
+    label: "Gemini",
+    color: "var(--color-primary)",
+    title: "Classified by Gemini",
+    ai: true,
+  },
+  groq: {
+    label: "Groq",
+    color: "var(--color-info)",
+    title: "Classified by the Groq fallback model",
+    ai: true,
+  },
+  local: {
+    label: "Local engine",
+    color: "var(--color-muted)",
+    title: "Classified by the local lexical fallback engine",
+    ai: false,
+  },
+};
+
 export function EngineBadge({ engine }: { engine: string }) {
-  const isGemini = engine === "gemini";
+  const meta = ENGINE_META[engine] ?? ENGINE_META.local;
   return (
-    <Badge
-      color={isGemini ? "var(--color-primary)" : "var(--color-muted)"}
-      title={isGemini ? "Classified by Gemini" : "Classified by the local fallback engine"}
-    >
-      {isGemini ? <Bot className="h-3 w-3" /> : <Cpu className="h-3 w-3" />}
-      {isGemini ? "Gemini" : "Local engine"}
+    <Badge color={meta.color} title={meta.title}>
+      {meta.ai ? <Bot className="h-3 w-3" /> : <Cpu className="h-3 w-3" />}
+      {meta.label}
     </Badge>
   );
 }

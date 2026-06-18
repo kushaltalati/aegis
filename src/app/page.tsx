@@ -347,15 +347,20 @@ export default function DashboardPage() {
                 <div className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
                   Engine mix
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <EngineBadge engine="gemini" />
-                  <span className="tabular text-sm">
-                    {data.engineCounts.gemini ?? 0}
-                  </span>
-                  <EngineBadge engine="local" />
-                  <span className="tabular text-sm">
-                    {data.engineCounts.local ?? 0}
-                  </span>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  {(["gemini", "groq", "local"] as const)
+                    .filter(
+                      (e) =>
+                        (data.engineCounts[e] ?? 0) > 0 || engineTotal === 0,
+                    )
+                    .map((e) => (
+                      <span key={e} className="flex items-center gap-1.5">
+                        <EngineBadge engine={e} />
+                        <span className="tabular text-sm">
+                          {data.engineCounts[e] ?? 0}
+                        </span>
+                      </span>
+                    ))}
                   <span className="ml-auto text-xs text-faint">
                     {engineTotal} total
                   </span>

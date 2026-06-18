@@ -83,6 +83,7 @@ export type Analytics = {
     createdAt: string;
   }[];
   geminiAvailable: boolean;
+  groqAvailable: boolean;
 };
 
 export type AuthorSummary = {
